@@ -107,6 +107,7 @@ extern void suite_repro_lsp_go_py(void);
 extern void suite_repro_lsp_ts(void);
 extern void suite_repro_lsp_java_cs(void);
 extern void suite_repro_lsp_kt_php_rust(void);
+extern void suite_repro_lsp_diag(void); /* TEMP diagnostic — remove after LSP diagnosis */
 
 int main(void) {
     /* Unbuffered: a reproduction may crash/_exit (or a sanitizer may _exit on a
@@ -174,6 +175,7 @@ int main(void) {
     RUN_SUITE(repro_lsp_ts);
     RUN_SUITE(repro_lsp_java_cs);
     RUN_SUITE(repro_lsp_kt_php_rust);
+    RUN_SUITE(repro_lsp_diag);
 
     TEST_SUMMARY();
 }
