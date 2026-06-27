@@ -146,6 +146,15 @@ static const char *generic_keywords[] = {
     "def",      "fn",        "func",      "fun",    "proc",   "sub",       "method",  "async",
     "await",    "yield",     NULL};
 
+/* Puppet reserves control-flow words but NOT `include`/`require`/`contain`,
+ * which are ordinary built-in functions invoked as calls. Using the generic
+ * list would wrongly drop `include`/`require` call edges, so Puppet gets its
+ * own reserved-word set that omits them. */
+static const char *puppet_keywords[] = {
+    "true",   "false", "undef",  "if",    "elsif", "else", "unless", "case",
+    "and",    "or",    "in",     "node",  "class", "define", "inherits", "default",
+    "return", NULL};
+
 bool cbm_is_keyword(const char *name, CBMLanguage lang) {
     if (!name || !name[0]) {
         return true;
@@ -173,6 +182,9 @@ bool cbm_is_keyword(const char *name, CBMLanguage lang) {
         break;
     case CBM_LANG_KOTLIN:
         keywords = kotlin_keywords;
+        break;
+    case CBM_LANG_PUPPET:
+        keywords = puppet_keywords;
         break;
     default:
         keywords = generic_keywords;

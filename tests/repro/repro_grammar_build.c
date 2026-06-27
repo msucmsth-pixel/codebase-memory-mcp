@@ -606,16 +606,18 @@ TEST(repro_grammar_build_gn) {
 
 /* ── Just ─────────────────────────────────────────────────────────────────────
  * Idiomatic justfile with two recipes (just_func_types = {"recipe"} ->
- * "Function") and a call from one recipe to a built-in (just_call_types =
- * {"function_call"}). The `build` recipe calls `just_executable` via
- * a recipe dependency. The `clean` recipe uses the shell idiom.
+ * "Function") and a recipe dependency that the grammar encodes as a
+ * `dependency` node (just_call_types includes "dependency"). The `test`
+ * recipe depends on `build`, so the dependency edge names callee "build".
+ * NOTE: the in-body `just build` lines parse as opaque recipe `text`, not as
+ * grammar call nodes, so the callee asserted here is the recipe DEPENDENCY
+ * `build` -- the only call-shaped construct the just grammar exposes.
  *
  * Dims asserted: 1-8 (full battery).
  * Dim 5 expected GREEN: "Function" def for "build" and "test" recipes.
  *   RED would indicate recipe->Function extraction is broken.
- * Dim 6 expected GREEN: call to "env_var" or the recipe dependency call.
- *   If the just grammar encodes recipe dependencies as function_call nodes this
- *   should be GREEN; RED documents the gap.
+ * Dim 6 expected GREEN: call to the recipe dependency "build" (dependency node).
+ *   RED documents the just dependency-as-call extraction gap.
  * Dim 7 expected RED: calls inside a recipe body are shell commands; the
  *   enclosing-func walk looks for a parent node in func_kinds_for_lang, but
  *   recipe body nodes (recipe_body / shell lines) are not typically in that
@@ -643,7 +645,7 @@ TEST(repro_grammar_build_just) {
         "    just test\n";
     static const char bad[] = "build:\n    go build -o ";
     if (build_callable_battery("Just", src, CBM_LANG_JUST, "justfile",
-                               "Function", "just") != 0)
+                               "Function", "build") != 0)
         return 1;
     if (build_robustness("Just", bad, CBM_LANG_JUST, "justfile") != 0)
         return 1;
