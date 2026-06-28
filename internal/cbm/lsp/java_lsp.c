@@ -1779,8 +1779,8 @@ void java_lsp_process_file(JavaLSPContext *ctx, TSNode root) {
 
 /* ── Call-edge resolution ─────────────────────────────────────────── */
 
-static void java_emit_resolved(JavaLSPContext *ctx, const char *callee_qn, const char *strategy,
-                               float confidence) {
+static void java_emit_resolved_orig(JavaLSPContext *ctx, const char *callee_qn, const char *orig,
+                                    const char *strategy, float confidence) {
     if (!ctx->resolved_calls || !ctx->enclosing_method_qn || !callee_qn)
         return;
     CBMResolvedCall rc;
@@ -1788,8 +1788,17 @@ static void java_emit_resolved(JavaLSPContext *ctx, const char *callee_qn, const
     rc.callee_qn = callee_qn;
     rc.strategy = strategy;
     rc.confidence = confidence;
-    rc.reason = NULL;
+    // For a data-flow resolution (constructor reference `Lhs::new` resolved to
+    // the Lhs class), `reason` carries the ORIGINAL textual callee (`new`) so the
+    // pipeline join can match the textual call site even though the resolved
+    // callee_qn's short name differs. NULL/unread for normal resolved calls.
+    rc.reason = orig;
     cbm_resolvedcall_push(ctx->resolved_calls, ctx->arena, rc);
+}
+
+static void java_emit_resolved(JavaLSPContext *ctx, const char *callee_qn, const char *strategy,
+                               float confidence) {
+    java_emit_resolved_orig(ctx, callee_qn, NULL, strategy, confidence);
 }
 
 static void java_emit_unresolved(JavaLSPContext *ctx, const char *expr_text, const char *reason) {
@@ -2587,12 +2596,15 @@ static void resolve_method_reference(JavaLSPContext *ctx, TSNode mref,
         short_name = short_name ? short_name + 1 : type_qn;
         const CBMRegisteredFunc *cf =
             cbm_registry_lookup_method(ctx->registry, type_qn, short_name);
-        if (cf) {
-            java_emit_resolved(ctx, cf->qualified_name, "lsp_method_ref_ctor", 0.90f);
-        } else {
-            java_emit_resolved(ctx, cbm_arena_sprintf(ctx->arena, "%s.%s", type_qn, short_name),
-                               "lsp_method_ref_ctor_synth", 0.80f);
-        }
+        // A `ClassName::new` reference constructs ClassName: resolve to the
+        // ClassName CLASS node (which the textual extractor stored), not the
+        // synthetic constructor QN that has no graph node. orig=mname ("new")
+        // lets the join match the textual `new` call site (the constructor
+        // reference is extracted as a call to `new`). cf distinguishes an
+        // indexed constructor (higher confidence) from a synthesized one.
+        java_emit_resolved_orig(ctx, type_qn, mname,
+                                cf ? "lsp_method_ref_ctor" : "lsp_method_ref_ctor_synth",
+                                cf ? 0.90f : 0.80f);
         return;
     }
 

@@ -112,7 +112,9 @@ static inline const CBMResolvedCall *cbm_pipeline_find_lsp_resolution(
              * is never misread as an unresolved-call diagnostic. */
             if (!(rc->reason && rc->strategy &&
                   (strcmp(rc->strategy, "lsp_func_ptr") == 0 ||
-                   strcmp(rc->strategy, "lsp_dll_resolve") == 0) &&
+                   strcmp(rc->strategy, "lsp_dll_resolve") == 0 ||
+                   strcmp(rc->strategy, "lsp_method_ref_ctor") == 0 ||
+                   strcmp(rc->strategy, "lsp_method_ref_ctor_synth") == 0) &&
                   strcmp(cbm_lsp_bare_segment(rc->reason), call_short) == 0)) {
                 continue;
             }
